@@ -2,6 +2,7 @@
 // TODO: branch version validaotr
 // TODO: package.lock or yarn.lock update
 // TODO: versions checker (major, minor, patch)
+// TODO: error handling
 
 import BitbucketAPI from "./clients/bitbucket-api.js";
 import npmApi from "./clients/npm-api.js";
@@ -16,7 +17,7 @@ import { questions } from "./inquirer-config.js";
 import inquirer from "inquirer";
 import cliProgress from "cli-progress";
 
-// NOTE: the price to write it according to fancy object-oriented design principles to hight for this script :)
+// NOTE: the price to write it according to fancy object-oriented design principles to high for this script :)
 async function updatePackageJson(
   bitbucketApi,
   npmApi,
