@@ -6,6 +6,8 @@ Node - v18.13.0 or higher
 # Installation
 ```
 npm ci
+touch .env
+*fullfil .env file* with envs in the .env.example
 ```
 
 # Usage
