@@ -1,29 +1,25 @@
-//TODO: PLEASE USE TYPESCRIPT, THIS IS A MESS
+// TODO: PLEASE USE TYPESCRIPT, THIS IS A MESS
+// TODO: branch version validaotr
+// TODO: package.lock or yarn.lock update
+// TODO: versions checker (major, minor, patch)
 
-import BitbucketAPI from "./bitbucket-api.js";
-import { DEPENDENCIES_KEYS } from "./constants.js";
+import BitbucketAPI from "./clients/bitbucket-api.js";
+import npmApi from "./clients/npm-api.js";
+import {
+  DEPENDENCIES_KEYS,
+  FILE_TO_UPDATE,
+  BITBUCKET_TOKEN,
+  BITBUCKET_URL,
+} from "./constants.js";
 import { questions } from "./inquirer-config.js";
 
 import inquirer from "inquirer";
 import cliProgress from "cli-progress";
 
-// TODO: for simplicity, this is hard-coded
-const bitbucketAuth =
-  "ATCTT3xFfGN0codOjJ0x1jfnh3viGojV0drqlsAyxBr3b929L8bwpV2bELkFrAxSYGHllKCpvzBg29HSlH8aBiBsEfQaKdoxA8A8dgEXpk6biAS80yrSkMMquHAQ3bajLJjJMUkwpjA6Cwgrs2vzhxoQItlDvTjUD7IhhBJEz8gVlpeQhhymYbE=F105B958";
-
-const bitBucketUrl = "https://api.bitbucket.org/2.0/repositories";
-
-// if (process.argv.length !== 7) {
-//   console.error(
-//     "Usage: node update-package.js <owner> <repo_slug> <branch> <packageName> <packageVersion>"
-//   );
-//   process.exit(1);
-// }
-
-// const [, , owner, repoSlug, branch, packageName, packageVersion] = process.argv;
-
+// NOTE: the price to write it according to fancy object-oriented design principles to hight for this script :)
 async function updatePackageJson(
   bitbucketApi,
+  npmApi,
   branch,
   packageName,
   packageVersion
@@ -36,17 +32,31 @@ async function updatePackageJson(
 
     // TODO: use decorators for status updating
     bar.start(100, 0);
+
+    const isExists = await npmApi.checkVersionExists(
+      packageName,
+      packageVersion
+    );
+
+    bar.update(20);
+
+    if (!isExists) {
+      console.error("Package version doesn't exist in npm");
+      process.exit(1);
+    }
+
     const packageJsonContent = await bitbucketApi.getFileContent(
-      "package.json",
+      FILE_TO_UPDATE,
       branch
     );
-    bar.update(25);
+    bar.update(40);
 
     let isPackageFound = false;
-    DEPENDENCIES_KEYS.forEach((key) => {
-      if (packageJsonContent[key]?.[packageName]) {
+    DEPENDENCIES_KEYS.forEach((dependencyKey) => {
+      if (packageJsonContent[dependencyKey]?.[packageName]) {
+        // don't stop the loop, we need to update all the dependencies
         isPackageFound = true;
-        packageJsonContent[key][packageName] = packageVersion;
+        packageJsonContent[dependencyKey][packageName] = packageVersion;
       }
     });
     if (!isPackageFound) {
@@ -54,21 +64,23 @@ async function updatePackageJson(
       process.exit(1);
     }
 
-    const newBranchName = `update-${packageName}-to-${packageVersion}`;
+    // TODO: check if the version is already updated
+
+    const newBranchName = `chore/update-${packageName}-to-${packageVersion}`;
 
     await bitbucketApi.createBranch(newBranchName, branch);
 
-    bar.update(50);
+    bar.update(60);
 
     await bitbucketApi.commitFile(
       `Update ${packageName} to version ${packageVersion}`,
-      "package.json",
+      FILE_TO_UPDATE,
       // TODO: handle other spaces
       JSON.stringify(packageJsonContent, null, 2),
       newBranchName
     );
 
-    bar.update(75);
+    bar.update(80);
 
     const createPullRequestResult = await bitbucketApi.createPullRequest(
       `Update ${packageName} to version ${packageVersion}`,
@@ -92,9 +104,10 @@ inquirer
       new BitbucketAPI({
         owner,
         repoSlug,
-        bitbucketAuth,
-        bitBucketUrl,
+        bitbucketAuth: BITBUCKET_TOKEN,
+        bitBucketUrl: BITBUCKET_URL,
       }),
+      npmApi,
       branch,
       packageName,
       packageVersion
@@ -103,15 +116,3 @@ inquirer
   .catch((error) => {
     console.log("Error occurred:", error.message);
   });
-
-// updatePackageJson(
-//   new BitbucketAPI({
-//     owner,
-//     repoSlug,
-//     bitbucketAuth,
-//     bitBucketUrl,
-//   }),
-//   branch,
-//   packageName,
-//   packageVersion
-// );

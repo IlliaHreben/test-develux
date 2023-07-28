@@ -8,7 +8,7 @@ export default class BitbucketAPI {
   }
 
   async #makeRequest(path = "", method = "GET", headers = {}, body) {
-    const response = await fetch(`${this.bitbucketRepoUrl}/${path}`, {
+    return fetch(`${this.bitbucketRepoUrl}/${path}`, {
       method,
       headers: {
         ...headers,
@@ -16,17 +16,21 @@ export default class BitbucketAPI {
       },
       body,
     });
+  }
+
+  async #handleRequest(path = "", method = "GET", headers = {}, body) {
+    const response = await this.#makeRequest(path, method, headers, body);
 
     return body instanceof FormData ? response.text() : response.json();
   }
 
   async getFileContent(filePath, branchName) {
-    return this.#makeRequest(`src/${branchName}/${filePath}`);
+    return this.#handleRequest(`src/${branchName}/${filePath}`);
   }
 
   async createBranch(branchName, fromBranch) {
     try {
-      const result = await this.#makeRequest(
+      const result = await this.#handleRequest(
         `refs/branches`,
         "POST",
         {
@@ -48,6 +52,7 @@ export default class BitbucketAPI {
           "Error occurred while creating the branch:",
           error.message
         );
+        throw error;
       }
     }
   }
@@ -56,27 +61,22 @@ export default class BitbucketAPI {
     try {
       const formData = new FormData();
 
-      const data = {
-        message: commitName,
-        branch: branchName,
-        [filePath]: fileContent,
-      };
+      formData.append("message", commitName);
+      formData.append("branch", branchName);
+      formData.append(filePath, fileContent);
 
-      //TODO unsafe, use another method
-      for (const name in data) {
-        formData.append(name, data[name]);
-      }
-      const result = await this.#makeRequest(`src`, "POST", {}, formData);
+      const result = await this.#handleRequest(`src`, "POST", {}, formData);
 
       return result;
     } catch (error) {
       console.error("Error occurred while committing the file:", error.message);
+      throw error;
     }
   }
 
   async createPullRequest(pullRequestName, sourceBranch, destinationBranch) {
     try {
-      const result = await this.#makeRequest(
+      const result = await this.#handleRequest(
         `pullrequests`,
         "POST",
         {
@@ -104,10 +104,7 @@ export default class BitbucketAPI {
         "Error occurred while creating the pull request:",
         error.message
       );
+      throw error;
     }
   }
 }
-
-// branch version validaotr
-// package.lock or yarn.lock update
-// versions checker (major, minor, patch)
