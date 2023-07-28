@@ -25,7 +25,9 @@ export default class BitbucketAPI {
   }
 
   async getFileContent(filePath, branchName) {
-    return this.#handleRequest(`src/${branchName}/${filePath}`);
+    const result = await this.#handleRequest(`src/${branchName}/${filePath}`);
+    if (result.type === "error") throw new Error(result.error.message);
+    return result;
   }
 
   async createBranch(branchName, fromBranch) {

@@ -42,8 +42,7 @@ async function updatePackageJson(
     bar.update(20);
 
     if (!isExists) {
-      console.error("Package version doesn't exist in npm");
-      process.exit(1);
+      throw new Error("The package or package version doesn't exist in npm");
     }
 
     const packageJsonContent = await bitbucketApi.getFileContent(
@@ -94,7 +93,8 @@ async function updatePackageJson(
     console.log("Pull request created successfully.");
     console.log(createPullRequestResult.links.html.href);
   } catch (error) {
-    console.error("Error occurred:", error.message);
+    console.error("\nError occurred:", error.message);
+    process.exit(1);
   }
 }
 
@@ -115,5 +115,5 @@ inquirer
     )
   )
   .catch((error) => {
-    console.log("Error occurred:", error.message);
+    console.log("\nError occurred:", error.message);
   });
